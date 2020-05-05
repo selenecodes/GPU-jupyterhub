@@ -46,6 +46,8 @@ docker build -t "minimal-notebook"
 ```
 
 ### Building the hub
+**Note:** Make sure to change the `userlist` file to include your Github username.
+
 ```bash
 # Make sure to do this in the root of the repo*
 docker-compose up --build
