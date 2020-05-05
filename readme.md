@@ -11,11 +11,11 @@ I've personally found the [DigitalOcean Tutorial](https://www.digitalocean.com/c
 sudo apt-get install nvidia-container-runtime
 ```
 - Nvidia docker2 needs to be installed see their [Github](https://github.com/NVIDIA/nvidia-docker) for instructions.
-- 
 
 
 ## Installation
-To make this work make sure to change your `/etc/docker/daemon.json` to the following:
+### Preparation
+To make `runtime: nvidia` work we need to change our `/etc/docker/daemon.json` to the following:
 ```json
 {
     "runtimes": {
@@ -26,4 +26,37 @@ To make this work make sure to change your `/etc/docker/daemon.json` to the foll
     }
 }
 
+```
+
+### Building our notebook containers
+We can now build our notebook containers with:
+```bash
+#cd notebooks/{notebook-folder}
+#docker build -t {notebook-folder-name} .
+
+# Example
+cd notebooks/base-notebook
+docker build -t "base-notebook" .
+
+cd ..
+cd notebooks/minimal-notebook
+docker build -t "minimal-notebook"
+
+# And so on
+```
+
+### Building the hub
+```bash
+# Make sure to do this in the root of the repo*
+docker-compose up --build
+```
+
+### Common Issues
+- Volume `jupyterhub-db-data` or `jupyterhub-data` not found.
+```bash
+docker volume create --name="jupyterhub-data"
+```
+- Network `jupyterhub-network` not found.
+```bash
+docker network create "jupyterhub-network"
 ```
