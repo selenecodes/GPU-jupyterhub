@@ -1,0 +1,23 @@
+# Copyright (c) Jupyter Development Team.
+# Distributed under the terms of the Modified BSD License.
+#ARG JUPYTERHUB_VERSION
+#FROM jupyterhub/jupyterhub-onbuild:$JUPYTERHUB_VERSION
+FROM jupyterhub/jupyterhub-onbuild:0.9.2
+
+# Install dockerspawner, oauth, postgres
+RUN /opt/conda/bin/conda update -n root conda && \
+    /opt/conda/bin/conda install -yq -c conda-forge psycopg2=2.7 && \
+    /opt/conda/bin/conda clean -tipsy && \
+    /opt/conda/bin/pip  install --no-cache-dir \
+        oauthenticator \
+        dockerspawner
+
+# Copy TLS certificate and key
+ENV SSL_CERT /srv/jupyterhub/secrets/jupyterhub.crt
+ENV SSL_KEY /srv/jupyterhub/secrets/jupyterhub.key
+COPY ./secrets/cert.pem $SSL_CERT
+COPY ./secrets/privkey.pem $SSL_KEY
+RUN chmod 700 /srv/jupyterhub/secrets && \
+    chmod 600 /srv/jupyterhub/secrets/*
+
+COPY ./userlist /srv/jupyterhub/userlist
