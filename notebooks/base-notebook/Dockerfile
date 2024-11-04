@@ -1,10 +1,10 @@
  
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
-ARG BASE_CONTAINER=nvidia/cuda:10.1-cudnn7-devel-ubuntu18.04
+ARG BASE_CONTAINER=nvidia/cuda:12.6.2-cudnn-devel-ubuntu22.04
 FROM ${BASE_CONTAINER}
 
-LABEL maintainer "Selene Blok <selene.blok@gmail.com>"
+LABEL maintainer="Selene Blok <selene.blok@gmail.com>"
 #LABEL maintainer="Jupyter Project <jupyter@googlegroups.com>"
 ARG NB_USER="jovyan"
 ARG NB_UID="1000"
@@ -14,7 +14,7 @@ USER root
 
 # Install all OS dependencies for notebook server that starts but lacks all
 # features (e.g., download as all possible file formats)
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
  && apt-get install -yq --no-install-recommends \
     wget \
@@ -68,16 +68,16 @@ ARG PYTHON_VERSION=default
 RUN mkdir /home/$NB_USER/work && \
     fix-permissions /home/$NB_USER
 
-# Install conda as jovyan and check the md5 sum provided on the download site
-ENV MINICONDA_VERSION=4.8.2 \
-    MINICONDA_MD5=87e77f097f6ebb5127c77662dfc3165e \
-    CONDA_VERSION=4.8.2
+# Install conda as jovyan and check the sha256 sum provided on the download site
+ENV MINICONDA_VERSION=24.9.2-0 \
+    MINICONDA_SHA256=62ef806265659c47e37e22e8f9adce29e75c4ea0497e619c280f54c823887c4f \
+    CONDA_VERSION=24.9.2
 
 RUN cd /tmp && \
-    wget --quiet https://repo.continuum.io/miniconda/Miniconda3-py37_${MINICONDA_VERSION}-Linux-x86_64.sh && \
-    echo "${MINICONDA_MD5} *Miniconda3-py37_${MINICONDA_VERSION}-Linux-x86_64.sh" | md5sum -c - && \
-    /bin/bash Miniconda3-py37_${MINICONDA_VERSION}-Linux-x86_64.sh -f -b -p $CONDA_DIR && \
-    rm Miniconda3-py37_${MINICONDA_VERSION}-Linux-x86_64.sh && \
+    wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-py311_${MINICONDA_VERSION}-Linux-x86_64.sh && \
+    echo "${MINICONDA_SHA256} *Miniconda3-py311_${MINICONDA_VERSION}-Linux-x86_64.sh" | sha256sum -c - && \
+    /bin/bash Miniconda3-py311_${MINICONDA_VERSION}-Linux-x86_64.sh -f -b -p $CONDA_DIR && \
+    rm Miniconda3-py311_${MINICONDA_VERSION}-Linux-x86_64.sh && \
     echo "conda ${CONDA_VERSION}" >> $CONDA_DIR/conda-meta/pinned && \
     conda config --system --prepend channels conda-forge && \
     conda config --system --set auto_update_conda false && \
@@ -94,7 +94,7 @@ RUN cd /tmp && \
     fix-permissions /home/$NB_USER
 
 # Install Tini
-RUN conda install --quiet --yes 'tini=0.18.0' && \
+RUN conda install --quiet --yes 'tini=0.19.0' && \
     conda list tini | grep tini | tr -s ' ' | cut -d ' ' -f 1,2 >> $CONDA_DIR/conda-meta/pinned && \
     conda clean --all -f -y && \
     fix-permissions $CONDA_DIR && \
@@ -107,9 +107,9 @@ RUN conda install --quiet --yes 'tini=0.18.0' && \
 # Do all this in a single RUN command to avoid duplicating all of the
 # files across image layers when the permissions change
 RUN conda install --quiet --yes \
-    'notebook=6.0.3' \
-    'jupyterhub=1.1.0' \
-    'jupyterlab=2.0.1' \
+    'notebook=7.2.2' \
+    'jupyterhub=5.2.1' \
+    'jupyterlab=4.2.5' \
     'nbresuse' && \
     conda clean --all -f -y && \
     npm cache clean --force && \
