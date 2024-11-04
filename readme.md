@@ -62,3 +62,8 @@ docker volume create --name="jupyterhub-data"
 ```bash
 docker network create "jupyterhub-network"
 ```
+- No such file or directory: '/data/jupyerhub_cookie_secret'
+Run the following command whilst replacing $DATA_VOLUME_CONTAINER with the actual path.
+```bash
+openssl rand -hex 32 > {$DATA_VOLUME_CONTAINER}/jupyterhub_cookie_secret
+```

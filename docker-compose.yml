@@ -2,88 +2,80 @@
 # Distributed under the terms of the Modified BSD License.
 
 # JupyterHub docker-compose configuration file
-#version: "3"
-version: "2.3"
-
 services:
   hub:
-    shm_size: 16G
-    ipc: host
-    depends_on:
-      - hub-db
     build:
       context: .
       dockerfile: Dockerfile.jupyterhub
       args:
-        JUPYTERHUB_VERSION: $JUPYTERHUB_VERSION
+        JUPYTERHUB_VERSION: 5.2.1
     restart: always
     image: jupyterhub
-    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
     container_name: jupyterhub
+    networks:
+      - jupyterhub-network
+    depends_on:
+      - hub-db
     volumes:
+      # The JupyterHub configuration file
+      - "./jupyterhub_config.py:/srv/jupyterhub/jupyterhub_config.py:ro"
       # Bind Docker socket on the host so we can connect to the daemon from
       # within the container
       - "/var/run/docker.sock:/var/run/docker.sock:rw"
       # Bind Docker volume on host for JupyterHub database and cookie secrets
-      - "data:${DATA_VOLUME_CONTAINER}"
+      - "jupyterhub-data:/data"
       - "${HOST_PERSONAL_NETWORK_FOLDER}:${HOST_PERSONAL_NETWORK_FOLDER}" ### needed for pre spawn hook
-      #- "${HOST_SHARED_NETWORK_FOLDER}:${HOST_SHARED_NETWORK_FOLDER}" ### not really needed
+      - "${HOST_SHARED_NETWORK_FOLDER}:${HOST_SHARED_NETWORK_FOLDER}" ### not really needed
     ports:
-      - "443:443"
-    links:
-      - hub-db
+      - "8000:8000"
     environment:
+      # This username will be a JupyterHub admin
+      JUPYTERHUB_ADMIN: admin
       # All containers will join this network
-      DOCKER_NETWORK_NAME: ${DOCKER_NETWORK_NAME}
+      DOCKER_NETWORK_NAME: jupyterhub-network
       # JupyterHub will spawn this Notebook image for users
-      DOCKER_NOTEBOOK_IMAGE: ${DOCKER_NOTEBOOK_IMAGE}
+      DOCKER_NOTEBOOK_IMAGE: quay.io/jupyter/pytorch-notebook:cuda12-notebook-7.2.2
       # Notebook directory inside user image
-      DOCKER_NOTEBOOK_DIR: ${DOCKER_NOTEBOOK_DIR}
-      # Using this run command (optional)
-      DOCKER_SPAWN_CMD: ${DOCKER_SPAWN_CMD}
+      DOCKER_NOTEBOOK_DIR: /home/jovyan/work
+      # Enable NVIDIA GPU support
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
-      # Postgres db info
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_HOST: hub-db
       #Network paths
-      DOCKER_PERSONAL_NETWORK_FOLDER: ${DOCKER_PERSONAL_NETWORK_FOLDER}
-      DOCKER_SHARED_NETWORK_FOLDER: ${DOCKER_SHARED_NETWORK_FOLDER}
+      DOCKER_PERSONAL_NETWORK_FOLDER: /home/jovyan/personal/
+      DOCKER_SHARED_NETWORK_FOLDER: /home/jovyan/shared
       HOST_PERSONAL_NETWORK_FOLDER: ${HOST_PERSONAL_NETWORK_FOLDER}
-      #HOST_SHARED_NETWORK_FOLDER: ${HOST_SHARED_NETWORK_FOLDER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      #GitHubOAuthenticator
-      #GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
-      #GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
-      #OAUTH_CALLBACK_URL: ${OAUTH_CALLBACK_URL}
-    env_file: ### env files containing variables you do not want to track in GitHub
-      - secrets/postgres.env
-      - secrets/oauth.env
+      HOST_SHARED_NETWORK_FOLDER: ${HOST_SHARED_NETWORK_FOLDER}
+      # Postgres DB info
+      POSTGRES_HOST: hub-db
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGPASSWORD: ${PGPASSWORD}
+      PGUSER: ${PGUSER}
     command: >
       jupyterhub -f /srv/jupyterhub/jupyterhub_config.py
 
   hub-db:
-    image: postgres:9.5
+    image: postgres:17
     container_name: jupyterhub-db
-    restart: always
+    restart: unless-stopped
     environment:
+      PGDATA: /data/pgdata
       POSTGRES_DB: ${POSTGRES_DB}
-      PGDATA: ${DB_VOLUME_CONTAINER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    env_file:
-      - secrets/postgres.env
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+      POSTGRES_USER: ${PGUSER}
     volumes:
-      - "db:${DB_VOLUME_CONTAINER}"
-
-networks:
-  default:
-    external:
-      name: ${DOCKER_NETWORK_NAME}
+      - "postgres:/data/pgdata"
+    networks:
+      - jupyterhub-network
 
 volumes:
-  data:
-    external:
-      name: ${DATA_VOLUME_HOST}
-  db:
-    external:
-      name: ${DB_VOLUME_HOST}
+  jupyterhub-data:
+  postgres:
+
+networks:
+  jupyterhub-network:
+    name: jupyterhub-network
